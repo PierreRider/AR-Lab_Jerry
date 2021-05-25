@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.ARFoundation;
+using UnityEngine.XR.ARSubsystems;
 
 public class PlacementReticule : MonoBehaviour
 {
@@ -16,39 +17,42 @@ public class PlacementReticule : MonoBehaviour
     private ARRaycastManager rayCastManager;
 
     [SerializeField]
+    [Tooltip("Prefab with the visual reticle")]
+    private GameObject reticlePrefab;
+
+    [SerializeField]
     [Tooltip("Reference to the AR Camera Transform")]
     private Transform cameraTransform;
-
+    //Reference to the instantiated reticle
     private GameObject reticle;
 
     private List<ARRaycastHit> hits = new List<ARRaycastHit>();
+    public FurnitureConfig selectedFurniture;
 
     #endregion
+
+    #region Unity Functions
     public void Awake()
     {
+        reticle = Instantiate(reticlePrefab);
         planeManager.planesChanged += PlanesChanged;
+    }
+    void Update()
+    {
+        Vector2 screenCenter = ScreenUtils.GetScreenCenter();
+        if (rayCastManager.Raycast(screenCenter, hits, UnityEngine.XR.ARSubsystems.TrackableType.PlaneWithinPolygon))
+        {
+            //Repositions the reticle
+            RepositionReticle();
+        }
     }
     private void PlanesChanged(ARPlanesChangedEventArgs arg)
     {
         
     }
+#endregion
 
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
 
-    // Update is called once per frame
-    // void Update()
-    // {
-    //     Vector2 screenCenter = ScreenUtils.GetScreenCenter();
-    //     if (rayCastManager.Raycast)
-    //     {
-            
-    //     }
-    // }
-    public FurnitureConfig selectedFurniture;
     private void RepositionReticle()
     {
         Pose pose = hits[0].pose;
@@ -60,10 +64,11 @@ public class PlacementReticule : MonoBehaviour
         if(Vector3.Dot(userVector, normal) >= 0)
         {
             reticle.transform.SetPositionAndRotation(pose.position, pose.rotation);
+      
         }
     }
-    public void PlaceFurnitureOnPlance(ARPlane plane)
 
+    public void PlaceFurnitureOnPlance(ARPlane plane)
     {
         if ( selectedFurniture.canBePlaced(plane) && selectedFurniture.fitsOnPlance(plane))
         {
@@ -72,7 +77,13 @@ public class PlacementReticule : MonoBehaviour
         else
         {
             Debug.Log("This piece of furniture doesn't fit the given plane");
-
         }
+    }
+
+    public void EnableFurniturePreview()
+    {
+        TrackableId planeId = hits[0].trackableId;
+        ARPlane plane = planeManager.trackables[planeId];
+        PlaceFurnitureOnPlance(plane);
     }
 }
